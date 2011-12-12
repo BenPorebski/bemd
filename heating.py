@@ -51,3 +51,14 @@ def velocity_scale(atoms, temp, n_degree_of_freedom):
       atom.vel.scale(scaling_factor)
 
 
+def strong_velocity_scale(atoms, temp, n_degree_of_freedom):
+  "Scales velocity of atoms to energy at temp. Vel: angstroms/ps"
+  target_energy = energy.mean_energy(temp, n_degree_of_freedom)
+  for atom in atoms:
+    kin = energy.kinetic_energy([atom])
+    scaling_factor = math.sqrt(target_energy / kin)
+    atom.vel.scale(scaling_factor)
+
+
+
+

@@ -1,6 +1,22 @@
-Goals
 
-stable molecules
+
+# Bare Electron Nanoparticle Dynamics
+
+Modeling moleucles using a hard-sphere model for electrons
+
+We can finally dispense with the covalent harmonic spring and model the destruction and creation of chemical bonds.
+
+In other words, we can study chemical reactions, including enzymatic reactions in biology.
+
+Use the LJ repulsive-only potential. Avoid attractive terms as this messes with the electrostatic minima. Tried the hooke term, but doesn't scale well against the Coulomb force term. Elastic collisions are too expensive to calculate.
+
+Charge balance - how strong is it?
+
+Remove the central attraction of electrostatic to prevent blowing up of simulation
+
+Hard thermometer to scale velocities to a regime. This slows down the effect of the electrostatics, and allows a stochastic search for the minimum.
+
+Stable molecules
 - alanine dipeptide
 - ATP
 - water
@@ -10,7 +26,7 @@ stable molecules
 - small-disulfide protein
 - oxygen molecule - paramagnetism
 
-reactions
+Inorganic reactions
 - halo addition
 - SN2 reactions
 - diels alder reaction 

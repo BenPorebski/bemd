@@ -8,12 +8,32 @@ import os
 import sys
 import time
 
-import energy
-from vector3d import Vector3d, dot, pos_distance
+import heating
+import trajectory
+from vector3d import Vector3d
 
+
+"""
+Units: 
+
+mass: Da = g/mol or 1E-3 kg/mol
+dist: Angstroms = 1E-10m
+time: fs/T = 1/48.88821 1E-15s
+T = 48.88821 is needed to scale 0.5*m*v^2 to kcal/mol
+
+charge: e multiples of electron charge
+energy: kcal/mol
+
+thus coulomb prefactor is 332.0636 converts to kcal/mol
+
+in other words we want 
+force: kcal/mol/Angstrom
+"""
 
 class Particle:
-  def __init__(self, q, m, lj_e, lj_r, pos, vel=Vector3d(0.0, 0.0, 0.0)):
+  def __init__(
+      self, q, m, lj_e, lj_r, pos, 
+      vel=Vector3d(0.0, 0.0, 0.0)):
     self.pos = pos
     self.vel = vel
     self.mass = m
@@ -23,131 +43,27 @@ class Particle:
     self.force = Vector3d()
 
 
-def write_psf(psf, particles):
-  remarks = ['HA HA', 'HA HA']   
-  f = open(psf, 'w')
-  f.write('PSF\n')
-  f.write('\n')
-  f.write('       %d !NTITLE\n' % len(remarks))
-  for remark in remarks:
-    f.write('REMARKS %s\n' % remark)
-  f.write('\n')
-  f.write('    %d !NATOM\n' % len(particles))
-  for i, particle in enumerate(particles):
-    if particle.q > 0:
-      name = "C"
-    else:
-      name = "H"
-    s = ""
-    s += "%8d " % i 
-    s += "A " # chain
-    s += "%4d " % 1 # i_res
-    s += " %3s " % name # resname
-    s += "%3s " % name  # atom name
-    s += "%3s " % name  # atom type
-    s += "   % 10.6f "  % particle.q
-    s += "   % 10.4f "  % particle.mass
-    s += "          0"
-    s += "\n"
-    f.write(s)
-  f.write("\n       0 !NBOND: bonds\n\n")
-  f.write("\n       0 !NTHETA: angles\n\n")
-  f.write("\n       0 !NPHI: dihedrals\n\n")
-  f.write("\n       0 !NIMPHI: impropers\n\n")
-  f.close()
+def add_spherical(particles, n, r, scale_r):
+  """
+  Returns list of 3d coordinates of points on a sphere using the
+  Golden Section Spiral algorithm.
+  """
 
+  def generate_sphere_points(n):
+    points = []
+    inc = math.pi * (3 - math.sqrt(5))
+    offset = 2 / float(n)
+    for k in range(int(n)):
+      y = k * offset - 1 + (offset / 2)
+      r = math.sqrt(1 - y*y)
+      phi = k * inc
+      points.append((math.cos(phi)*r, y, math.sin(phi)*r))
+    return points
 
-class DCDWrite:
-  def __init__(self, dcd_file, n_atom):
-    self.n_frame = 0  # Number of frames
-    self.time_offset = 0  # time offset for trajectory
-    self.n_save = 0
-    self.n_fixed_atom = 0 # won't ever deal with fixed atoms
-    self.dt = 0.00
-    self.n_atom = n_atom
-    remarks = ['REMARKS LINE 1', 'REMARKS LINE 2']
-    self.remarks = [string.ljust(r, 80)[:80] for r in remarks]
-    self.n_remark_line = len(self.remarks)
-    self.size_remark = struct.calcsize('i')+80*self.n_remark_line
-
-    # write header
-    pack = struct.pack
-    self.f = open(dcd_file, 'w+b')
-    self.f.write(pack('i4c', 84, 'C', 'O', 'R', 'D'))
-    
-    self.pos_n_frame = self.f.tell()
-    self.f.write(pack('i', self.n_frame))
-    
-    self.f.write(pack('i', self.time_offset))
-    self.f.write(pack('i', self.n_save))
-    self.f.write(pack('4i', 0, 0, 0, 0))
-    self.f.write(pack('i', 0)) # Why?
-    self.f.write(pack('i', self.n_fixed_atom))
-    self.f.write(pack('d', self.dt))
-    self.f.write(pack('i', 0)) # Why?
-    self.f.write(pack('8i', 0, 0, 0, 0, 0, 0, 0, 0))
-    self.f.write(pack('i', 84))
-    self.f.write(pack('i', self.size_remark))
-    self.f.write(pack('i', self.n_remark_line))
-    for r in self.remarks:
-      self.f.write(pack(*(['80c']+list(r))))
-    self.f.write(pack('i', self.size_remark))
-    self.f.write(pack('i', struct.calcsize('i')))
-    self.f.write(pack('i', self.n_atom))
-    self.f.write(pack('i', struct.calcsize('i')))
-    self.f.flush()
-
-  def append_with_numpy(self, particles):
-    if 'numpy' not in globals():
-      import numpy
-    pack = struct.pack
-    self.n_frame += 1
-    self.f.seek(self.pos_n_frame)
-    self.f.write(pack('i', self.n_frame))
-    self.f.seek(0, 2) # go to end of file
-
-    x = numpy.array([p.pos.x for p in particles])
-    y = numpy.array([p.pos.y for p in particles])
-    z = numpy.array([p.pos.z for p in particles])
-    size_coordinate_block = struct.calcsize(repr(len(x))+'f')
-
-    self.f.write(pack('i', size_coordinate_block))
-    self.f.write(x.tostring())
-    self.f.write(pack('i', size_coordinate_block))
-    self.f.write(pack('i', size_coordinate_block))
-    self.f.write(y.tostring())
-    self.f.write(pack('i', size_coordinate_block))
-    self.f.write(pack('i', size_coordinate_block))
-    self.f.write(z.tostring())
-    self.f.write(pack('i', size_coordinate_block))
-    self.f.flush()
-  
-  def append(self, particles):
-    pack = struct.pack
-    self.n_frame += 1
-    self.f.seek(self.pos_n_frame)
-    self.f.write(pack('i', self.n_frame))
-    self.f.seek(0, 2) # go to end of file
-
-    x_coords = [p.pos.x for p in particles]
-    y_coords = [p.pos.y for p in particles]
-    z_coords = [p.pos.z for p in particles]
-    size_coordinate_block = struct.calcsize("%df" % len(x_coords))
-    len_str = '%df' % len(x_coords)
-
-    self.f.write(pack('i', size_coordinate_block))
-    self.f.write(pack(*([len_str] + x_coords)))
-    self.f.write(pack('i', size_coordinate_block))
-    self.f.write(pack('i', size_coordinate_block))
-    self.f.write(pack(*([len_str] + y_coords)))
-    self.f.write(pack('i', size_coordinate_block))
-    self.f.write(pack('i', size_coordinate_block))
-    self.f.write(pack(*([len_str] + z_coords)))
-    self.f.write(pack('i', size_coordinate_block))
-    self.f.flush()
-
-  def close(self):
-    self.f.close()
+  for point in generate_sphere_points(n):
+    point = [scale_r*r*p for p in point]
+    particles.append(
+        Particle(-1.0, el_mass, 500, r, Vector3d(*point)))
 
 
 def coulomb(p1, p2, r):
@@ -158,7 +74,7 @@ def coulomb(p1, p2, r):
 
 def coulomb_energy(p1, p2, r):
   if r >= 1.0:
-    return -331*p1.q*p2.q/r
+    return -332.0636*p1.q*p2.q/r
   else:
     return 0.0
 
@@ -219,91 +135,31 @@ def apply_forces(particles, dt):
     p.vel += p.force.scaled_vec(dt/p.mass)
  
 
-def velocity_scale(atoms, temp, n_degree_of_freedom):
-  "Scales velocity of atoms to energy at temp. Vel: angstroms/ps"
-  target_energy = energy.mean_energy(temp, n_degree_of_freedom)
-  for atom in atoms:
-    kin = energy.kinetic_energy([atom])
-    scaling_factor = math.sqrt(target_energy / kin)
-    atom.vel.scale(scaling_factor)
-
-
 def run_md(
     particles, out_name, n_step, temp, 
     dt, center_forces, is_elastic=True, n_save=200):
+  """
+  dt in fs, temp in K
+  """
   psf = out_name + '.psf'
   dcd = out_name + '.dcd'
-  write_psf(psf, particles)
-  dcd_writer = DCDWrite(dcd, len(particles))
-  energy.gas_randomize(particles, temp)
-  av_energy = energy.mean_energy(temp, 3*len(particles))
+  trajectory.write_psf(psf, particles)
+  dcd_writer = trajectory.DCDWrite(dcd, len(particles))
+  heating.gas_randomize(particles, temp)
+  av_energy = heating.mean_energy(temp, 3*len(particles))
   av_vel = math.sqrt(av_energy*2/el_mass)
   av_dist = av_vel*dt
   print "Temp:%.3f, Energy:%.4f, Velocity:%.4f, Dist:%f" % \
       (temp, av_energy, av_vel, av_dist)
+  # dt = dt/48.88821
   for i_step in range(n_step):
     calculate_forces(particles, center_forces)
     apply_forces(particles, dt)
-    velocity_scale(particles, temp, 3*len(particles))
+    heating.velocity_scale(particles, temp, 3*len(particles))
     if i_step % n_save == 0:
       dcd_writer.append(particles)
       if i_step % (n_save*100) == 0:
         print i_step // n_save, "frames"
   dcd_writer.close()
 
-
-def print_distances(particles):
-  dists = []
-  n_particle = len(particles)
-  for i in range(n_particle):
-    for j in range(i+1, n_particle):
-      d = pos_distance(particles[i].pos, particles[j].pos)
-      dists.append((d, i, j))
-  dists.sort(reverse=True)
-  for d in dists:
-    print "%4.1f %d %d" % d
-
-
-def generate_sphere_points(n):
-  """
-  Returns list of 3d coordinates of points on a sphere using the
-  Golden Section Spiral algorithm.
-  """
-  points = []
-  inc = math.pi * (3 - math.sqrt(5))
-  offset = 2 / float(n)
-  for k in range(int(n)):
-    y = k * offset - 1 + (offset / 2)
-    r = math.sqrt(1 - y*y)
-    phi = k * inc
-    points.append((math.cos(phi)*r, y, math.sin(phi)*r))
-  return points
-
-
-def add_spherical(particles, n, r, scale_r):
-  for point in generate_sphere_points(n):
-    point = [scale_r*r*p for p in point]
-    particles.append(
-        Particle(-1.0, el_mass, 500, r, Vector3d(*point)))
-
-
-el_mass = 50.0
-out_name = 'nitrogen'
-r1 = 0.05
-r2 = 0.4
-r3 = 0.9
-r5 = 2
-n = 5
-particles = [Particle(+n, 18.0, 500, 0.0, Vector3d(0.0, 0.0, 0.0))]
-add_spherical(particles, 1, r1, 1)
-# add_spherical(particles, 2, r2, 2)
-add_spherical(particles, 4, r3, 2)
-# particles = [
-#    Particle(+1.0, 18.0, 500, 2.0, Vector3d(0.0, 0.0, 0.0)),
-#    Particle(-1.0, 18.0, 500, 2.0, Vector3d(0.0, 4.2, 0.0))]
-run_md(
-    particles, out_name, 10000, 3, 0.001, 
-    [coulomb, lj], n_save=20)
-print_distances(particles)
-os.system('python vmdtraj.py ' + out_name)
 
