@@ -3,18 +3,6 @@ from vector3d import Vector3d, pos_distance
 import os
 
 
-def print_distances(particles):
-  dists = []
-  n_particle = len(particles)
-  for i in range(n_particle):
-    for j in range(i+1, n_particle):
-      d = pos_distance(particles[i].pos, particles[j].pos)
-      dists.append((d, i, j))
-  dists.sort(reverse=True)
-  for d in dists:
-    print "%4.1f %d %d" % d
-
-
 def goto_dir(d):
   if not os.path.isdir(d):
     os.makedirs(d)
@@ -34,7 +22,6 @@ def nitrogen():
   bemd.run_md(
       particles, out_name, 20000, 5, 0.001, 
       [bemd.coulomb, bemd.lj], n_save=20)
-  print_distances(particles)
   goto_dir('..')
 
 
@@ -48,12 +35,11 @@ def carbon():
   bemd.add_spherical(particles, 1, 0.01, 0.2, el_mass)
   bemd.add_spherical(particles, 4, 0.9, 2, el_mass)
   bemd.run_md(
-      particles, out_name, 20000, 1, 0.001, 
-      [bemd.coulomb, bemd.lj], n_save=100)
-  print_distances(particles)
+      particles, out_name, 8000, 1, 0.001, 
+      [bemd.coulomb, bemd.lj], n_save=50)
   goto_dir('..')
 
 
-# nitrogen()
-carbon()
-os.system('python vmdtraj.py carbon/carbon')
+nitrogen()
+# carbon()
+# os.system('python vmdtraj.py carbon/carbon')
