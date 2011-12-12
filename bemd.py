@@ -151,7 +151,7 @@ def run_md(
     center_forces, is_elastic=True, 
     n_save=200):
   """
-  dt in fs, temp in K
+  dt in ps, temp in K
   """
   print header
   psf = out_name + '.psf'
