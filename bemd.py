@@ -28,7 +28,7 @@ class Particle:
   def __init__(
       self, q, m, lj_e, lj_r, pos, 
       vel=Vector3d(0.0, 0.0, 0.0)):
-    self.pos = pos
+    self.pos = pos # angstrom
     self.vel = vel # angs/ps
     self.mass = m # dalton
     self.q = q # electron charge
