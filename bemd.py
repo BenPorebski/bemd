@@ -155,7 +155,7 @@ def run_md(
   for i_step in range(n_step):
     calculate_forces(particles, center_forces)
     apply_forces(particles, dt)
-    heating.velocity_scale(particles, temp, 3*len(particles))
+    heating.strong_velocity_scale(particles, temp, 3*len(particles))
     if i_step % n_save == 0:
       dcd_writer.append(particles)
       if i_step % (n_save*100) == 0:
