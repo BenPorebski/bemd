@@ -1,13 +1,4 @@
-import string
 import math
-import struct
-import copy
-import types
-import tempfile
-import os
-import sys
-import time
-
 import heating
 import trajectory
 from vector3d import Vector3d
@@ -30,20 +21,23 @@ in other words we want
 force: kcal/mol/Angstrom
 """
 
+COULOMB_FACTOR = 332.0636
+COULOMB_CUTOFF = 0.05
+
 class Particle:
   def __init__(
       self, q, m, lj_e, lj_r, pos, 
       vel=Vector3d(0.0, 0.0, 0.0)):
     self.pos = pos
-    self.vel = vel
-    self.mass = m
-    self.q = q
-    self.lj_e = lj_e
-    self.lj_r = lj_r
+    self.vel = vel # angs/ps
+    self.mass = m # dalton
+    self.q = q # electron charge
+    self.lj_e = lj_e # kcal/mol
+    self.lj_r = lj_r # angstrom
     self.force = Vector3d()
 
 
-def add_spherical(particles, n, r, scale_r):
+def add_spherical(particles, n, r, scale_r, el_mass):
   """
   Returns list of 3d coordinates of points on a sphere using the
   Golden Section Spiral algorithm.
@@ -67,19 +61,27 @@ def add_spherical(particles, n, r, scale_r):
 
 
 def coulomb(p1, p2, r):
-  if p1.q*p1.q < 0 and r < 0.05:
+  "output in kcal/mol/angs"
+  if p1.q*p1.q < 0 and r < COULOMB_CUTOFF:
     return 0
-  return 331*p1.q*p2.q/(r*r)
+  return COULOMB_FACTOR*p1.q*p2.q/(r*r)
 
 
 def coulomb_energy(p1, p2, r):
+  "output in kcal/mol"
   if r >= 1.0:
-    return -332.0636*p1.q*p2.q/r
+    return -COULOMB_FACTOR*p1.q*p2.q/r
   else:
     return 0.0
 
 
+def kinetic_energy_in_kcalmol(p):
+  "output in kcal/mol"
+  return 2.39E-3 * 0.5 * p.mass * p.vel.length()**2
+
+
 def rhooke(p1, p2, r):
+  "output in kcal/mol/angs"
   k = 1E8
   if p1.lj_r == 0.0 or p2.lj_r == 0.0:
     return 0
@@ -90,6 +92,7 @@ def rhooke(p1, p2, r):
 
 
 def lj(p1, p2, r):
+  "output in kcal/mol/angs"
   if p1.q*p2.q < 0:
     return 0
   r0 = 0.5*(p1.lj_r + p2.lj_r)
@@ -103,6 +106,7 @@ def lj(p1, p2, r):
 
 
 def lj_energy(p1, p2, r):
+  "output in kcal/mol"
   r0 = 0.5*(p1.lj_r + p2.lj_r)
   if r>r0:
     return 0
@@ -135,27 +139,32 @@ def apply_forces(particles, dt):
     p.vel += p.force.scaled_vec(dt/p.mass)
  
 
+header = """
+============================================
+Bare Electron Molecular Dynamics
+(c) 2011 Ben Porebski, Mike Kuiper, Bosco Ho
+============================================
+"""
+
 def run_md(
-    particles, out_name, n_step, temp, 
-    dt, center_forces, is_elastic=True, n_save=200):
+    particles, out_name, n_step, temp, time_step_ps, 
+    center_forces, is_elastic=True, 
+    n_save=200):
   """
   dt in fs, temp in K
   """
+  print header
   psf = out_name + '.psf'
   dcd = out_name + '.dcd'
   trajectory.write_psf(psf, particles)
   dcd_writer = trajectory.DCDWrite(dcd, len(particles))
   heating.gas_randomize(particles, temp)
-  av_energy = heating.mean_energy(temp, 3*len(particles))
-  av_vel = math.sqrt(av_energy*2/el_mass)
-  av_dist = av_vel*dt
-  print "Temp:%.3f, Energy:%.4f, Velocity:%.4f, Dist:%f" % \
-      (temp, av_energy, av_vel, av_dist)
-  # dt = dt/48.88821
+  dt = time_step_ps
   for i_step in range(n_step):
     calculate_forces(particles, center_forces)
     apply_forces(particles, dt)
-    heating.strong_velocity_scale(particles, temp, 3*len(particles))
+    heating.strong_velocity_scale(
+        particles, temp, 3*len(particles))
     if i_step % n_save == 0:
       dcd_writer.append(particles)
       if i_step % (n_save*100) == 0:

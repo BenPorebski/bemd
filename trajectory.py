@@ -1,5 +1,5 @@
 import struct
-
+import string
 
 def write_psf(psf, particles):
   remarks = ['HA HA', 'HA HA']   

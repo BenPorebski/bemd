@@ -11,6 +11,7 @@ def maxwell_velocity(temp, mass):
 
 
 def mean_energy(temp, n_degree_of_freedom):
+  "energy in Da(angs/ps)^2"
   boltzmann = 8314.47148  # Da (m/s)^2 K^-1
   convert_to_ang_per_ps = 1.0E-4 # (m/s)^2 to (angstroms/ps)^2
   return n_degree_of_freedom * 0.5 * boltzmann * \
@@ -53,10 +54,10 @@ def velocity_scale(atoms, temp, n_degree_of_freedom):
 
 def strong_velocity_scale(atoms, temp, n_degree_of_freedom):
   "Scales velocity of atoms to energy at temp. Vel: angstroms/ps"
-  target_energy = energy.mean_energy(temp, n_degree_of_freedom)
+  target_energy = mean_energy(temp, n_degree_of_freedom)
   for atom in atoms:
-    kin = energy.kinetic_energy([atom])
-    scaling_factor = math.sqrt(target_energy / kin)
+    energy = kinetic_energy([atom])
+    scaling_factor = math.sqrt(target_energy / energy)
     atom.vel.scale(scaling_factor)
 
 
