@@ -1,22 +1,15 @@
 
+# Bare Electron Molecular Dynamics
 
-# Bare Electron Nanoparticle Dynamics
+Bare Electron Molecular Dynamics is a program to simulate molecules using the hard electron approximation for atomic representation.
 
-Modeling moleucles using a hard-sphere model for electrons
+This level of approximation uses only the electrostatic interaction between nuclei and electrons as the only attractive term. This even allows a limited modeling of charge balance to model the stability of different atoms, even metals. 
 
-We can finally dispense with the covalent harmonic spring and model the destruction and creation of chemical bonds.
+An artificial repulsion term is used to model the Pauli exclusion principle. Once you explicitly include electrons, you can dispense with the covalent harmonic springs used in typical molecular dynamics simulations. We will investigate different repulsive functions such as step functions and non-interacting electron spin species.
 
-In other words, we can study chemical reactions, including enzymatic reactions in biology.
+BEMD therefore allows the creation and destruction of chemical bonds. Hard thermometer to scale velocities to a regime. This slows down the effect of the electrostatics, and allows a stochastic search for the minimum.
 
-Use the LJ repulsive-only potential. Avoid attractive terms as this messes with the electrostatic minima. Tried the hooke term, but doesn't scale well against the Coulomb force term. Elastic collisions are too expensive to calculate.
-
-Charge balance - how strong is it?
-
-Remove the central attraction of electrostatic to prevent blowing up of simulation
-
-Hard thermometer to scale velocities to a regime. This slows down the effect of the electrostatics, and allows a stochastic search for the minimum.
-
-Stable molecules
+To test the feasbility of BEMD, we aim to show that this representation can generate stable configurations of the following molecules:
 - alanine dipeptide
 - ATP
 - water
@@ -26,7 +19,7 @@ Stable molecules
 - small-disulfide protein
 - oxygen molecule - paramagnetism
 
-Inorganic reactions
+Ultimately, we hope to model basic chemical reaction such as:
 - halo addition
 - SN2 reactions
 - diels alder reaction 
@@ -38,5 +31,4 @@ Inorganic reactions
 - semiconductor in crystal geometry
 - urey-miller experiment
 
-- step functions for perfect repulsion
-- non-interacting electron spin species
+(c) 2011, Ben Porebski, Mike Kuiper and Bosco Ho.
