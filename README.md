@@ -10,8 +10,9 @@ An artificial repulsion term is used to model the Pauli exclusion principle. Onc
 BEMD therefore allows the creation and destruction of chemical bonds. Since we are interested in configurations, rather than kinetics, we use a hard thermometer to scale velocities to a regime where the electrons can find the optimal configuration. The temperature slows down the effect of the electrostatics, and allows a comprehensive stochastic search for the best electron configuration.
 
 To test the feasbility of BEMD, we hope to show that this representation can generate stable configurations of the following molecules:
-------------------------------
-First small steps
+
+## First small steps
+
 - H2
 - methane CH4
 - ethane CH2=CH2
@@ -27,7 +28,8 @@ First small steps
 - amide
 - acetic acid
 - ribose
-------------------------------
+
+## Other moleucles
 - B2H6
 - alanine dipeptide
 - ATP
@@ -37,9 +39,8 @@ First small steps
 - urea
 - small-disulfide protein
 - oxygen molecule - paramagnetism
-------------------------------
-Ultimately, we hope to model basic 
-chemical reaction such as:
+
+## Ultimate molecules
 
 - halo addition
 - SN2 reactions
