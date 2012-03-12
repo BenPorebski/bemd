@@ -19,6 +19,10 @@ thus coulomb prefactor is 332.0636 converts to kcal/mol
 
 in other words we want 
 force: kcal/mol/Angstrom
+
+TOOO:
+  make Particles class
+  write and read configuration files
 """
 
 COULOMB_FACTOR = 332.0636
@@ -28,8 +32,8 @@ class Particle:
   def __init__(
       self, q, m, lj_e, lj_r, pos, 
       vel=Vector3d(0.0, 0.0, 0.0)):
-    self.pos = pos # angstrom
-    self.vel = vel # angs/ps
+    self.pos = pos.copy() # angstrom
+    self.vel = vel.copy() # angs/ps
     self.mass = m # dalton
     self.q = q # electron charge
     self.lj_e = lj_e # kcal/mol
@@ -37,7 +41,7 @@ class Particle:
     self.force = Vector3d()
 
 
-def add_spherical(particles, n, r, scale_r, el_mass):
+def spherical_vecs(n, r, center=None):
   """
   Returns list of 3d coordinates of points on a sphere using the
   Golden Section Spiral algorithm.
@@ -54,11 +58,12 @@ def add_spherical(particles, n, r, scale_r, el_mass):
       points.append((math.cos(phi)*r, y, math.sin(phi)*r))
     return points
 
+  vecs = []
   for point in generate_sphere_points(n):
-    point = [scale_r*r*p for p in point]
-    particles.append(
-        Particle(-1.0, el_mass, 500, r, Vector3d(*point)))
-
+    v = Vector3d(*[r*p for p in point])
+    if center: v += center
+    vecs.append(v)
+  return vecs
 
 def coulomb(p1, p2, r):
   "output in kcal/mol/angs"
@@ -93,8 +98,8 @@ def rhooke(p1, p2, r):
 
 def lj(p1, p2, r):
   "output in kcal/mol/angs"
-  if p1.q*p2.q < 0:
-    return 0
+  # if p1.q*p2.q < 0:
+  #   return 0
   r0 = 0.5*(p1.lj_r + p2.lj_r)
   if r>r0:
     return 0
